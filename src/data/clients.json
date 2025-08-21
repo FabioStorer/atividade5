@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Clara",
+    "cpf": 1411411411,
+    "yearBirth": "2000",
+    "street": "rua",
+    "city": "cidade",
+    "state": "estado",
+    "country": "pais",
+    "email": "clara@gmail.com"
+  }
+]

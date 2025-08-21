@@ -1,74 +1,33 @@
 import express, { Express, Request, Response, NextFunction } from 'express';
 import { loggingMiddleware } from './middlewares/logging_middleware';
 import { routeErrorMiddleware, AppError } from './middlewares/route_error_middleware';
+import { UserRepository, Client } from './repositories/user_repository';
 import 'dotenv/config.js';
 
 const app: Express = express();
+const userRepository = new UserRepository();
 
 app.use(express.json());
-app.use(loggingMiddleware)
+app.use(loggingMiddleware);
 
-interface Pessoa {
-    name: string,
-    cpf: number,
-    yearBirth: string
-};
-
-interface Endereco extends Pessoa {
-    street: string
-    city: string,
-    state: string,
-    country: string
-};
-
-interface Client extends Endereco {
-    email: string
-};
-
-const clients: Client[] = [];
-
-const client = {
-    name: 'Marcos',
-    cpf: 12345678,
-    yearBirth: '2000',
-    street: 'abacate',
-    city: 'laranja',
-    state: 'mamao',
-    country: 'apple',
-    email: 'marcosteste@gmail.com'
-};
-
-clients.push(client);
-
-app.post('/signup', (req: Request, res: Response) => {
+app.post('/signup', async (req: Request, res: Response) => {
     try {
         const newClient: Client = req.body;
-
-        if (client.name === undefined &&
-            client.cpf === undefined &&
-            client.yearBirth === undefined &&
-            client.street === undefined &&
-            client.city === undefined &&
-            client.state === undefined &&
-            client.country === undefined &&
-            client.email === undefined) {
-            console.log('Dados inválidos.');
-        } else {
-            clients.push(newClient);
-            return res.send('Novo usuário cadastrado com sucesso!');
-        }
+        await userRepository.add(newClient);
+        return res.send('Novo usuário cadastrado com sucesso!');
     } catch (error) {
-        return res.status(400).send('Dados inválidos.');
+        return res.status(400).send('Erro ao cadastrar usuário.');
     }
 });
 
-app.get('/clients', (req: Request, res: Response) => {
+app.get('/clients', async (req: Request, res: Response) => {
+    const clients = await userRepository.getAll();
     res.json(clients);
 });
 
-app.get('/clients/:cpf', (req: Request, res: Response, next: NextFunction) => {
+app.get('/clients/:cpf', async (req: Request, res: Response, next: NextFunction) => {
     const cpf = Number(req.params.cpf);
-    const cliente = clients.find(c => c.cpf === cpf);
+    const cliente = await userRepository.getByCpf(cpf);
 
     if (!cliente) {
         return next(new AppError("Cliente não encontrado", 404));
@@ -77,37 +36,26 @@ app.get('/clients/:cpf', (req: Request, res: Response, next: NextFunction) => {
     res.json(cliente);
 });
 
-app.put('/clients/:cpf', (req: Request, res: Response) => {
-    try {
-        const cpfParam = Number(req.params.cpf);
+app.put('/clients/:cpf', async (req: Request, res: Response) => {
+    const cpfParam = Number(req.params.cpf);
+    const updatedClient: Client = req.body;
 
-        const index = clients.findIndex(c => c.cpf === cpfParam);
+    const success = await userRepository.update(cpfParam, updatedClient);
 
-        if (index === -1) {
-            return res.status(404).json({ error: 'Cliente não encontrado' });
-        }
-
-        let updatedClient = req.body;
-
-        clients[index] = updatedClient;
-
-        return res.send('Cliente atualizado com sucesso!');
-    } catch (err) {
-        return res.status(400).send('Dados inválidos e/ou faltando.');
-    }
-});
-
-
-app.delete('/clients/:cpf', (req: Request, res: Response) => {
-    const cpf = Number(req.params.cpf);
-
-    const index = clients.findIndex(c => c.cpf === cpf);
-
-    if (index === -1) {
+    if (!success) {
         return res.status(404).json({ error: 'Cliente não encontrado' });
     }
 
-    clients.splice(index, 1);
+    return res.send('Cliente atualizado com sucesso!');
+});
+
+app.delete('/clients/:cpf', async (req: Request, res: Response) => {
+    const cpf = Number(req.params.cpf);
+    const success = await userRepository.delete(cpf);
+
+    if (!success) {
+        return res.status(404).json({ error: 'Cliente não encontrado' });
+    }
 
     res.send('Cliente removido com sucesso!');
 });
