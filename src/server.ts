@@ -2,7 +2,12 @@ import express, { Express, Request, Response, NextFunction } from 'express';
 import { loggingMiddleware } from './middlewares/logging_middleware';
 import { routeErrorMiddleware, AppError } from './middlewares/route_error_middleware';
 import { UserRepository, Client } from './repositories/user_repository';
-import 'dotenv/config.js';
+import dotenv from 'dotenv';
+
+dotenv.config({
+    path: `.env.${process.env.NODE_ENV}`
+}
+);
 
 const app: Express = express();
 const userRepository = new UserRepository();
