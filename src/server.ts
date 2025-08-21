@@ -1,5 +1,6 @@
-import express, { Express, Request, Response } from 'express';
+import express, { Express, Request, Response, NextFunction } from 'express';
 import { loggingMiddleware } from './middlewares/logging_middleware';
+import { routeErrorMiddleware, AppError } from './middlewares/route_error_middleware';
 import 'dotenv/config.js';
 
 const app: Express = express();
@@ -63,22 +64,17 @@ app.post('/signup', (req: Request, res: Response) => {
 
 app.get('/clients', (req: Request, res: Response) => {
     res.json(clients);
-})
+});
 
-app.get('/clients/:cpf', (req: Request, res: Response) => {
-    try {
-        const cpf = Number(req.params.cpf);
-        const cliente = clients.find(c => c.cpf === cpf);
+app.get('/clients/:cpf', (req: Request, res: Response, next: NextFunction) => {
+    const cpf = Number(req.params.cpf);
+    const cliente = clients.find(c => c.cpf === cpf);
 
-        if (!cliente) {
-            return res.status(404).json({ error: 'Cliente não encontrado' });
-        }
-
-        return res.json(cliente);
-    } catch (error) {
-        return res.status(400).send('Cliente não encontrado.');
-
+    if (!cliente) {
+        return next(new AppError("Cliente não encontrado", 404));
     }
+
+    res.json(cliente);
 });
 
 app.put('/clients/:cpf', (req: Request, res: Response) => {
@@ -115,6 +111,8 @@ app.delete('/clients/:cpf', (req: Request, res: Response) => {
 
     res.send('Cliente removido com sucesso!');
 });
+
+app.use(routeErrorMiddleware);
 
 app.listen(process.env.API_PORT, () => {
     console.log(`Server running at port ${process.env.API_PORT}.`);
